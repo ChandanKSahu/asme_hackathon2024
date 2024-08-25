@@ -19,6 +19,7 @@
   </component>
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+    <option name="ROOT_SYNC" value="SYNC" />
   </component>
   <component name="HighlightingSettingsPerFile">
     <setting file="file://$PROJECT_DIR$/data_reader.py" root0="FORCE_HIGHLIGHTING" />
@@ -226,6 +227,7 @@
       <workItem from="1724434875246" duration="1025000" />
       <workItem from="1724435961120" duration="18304000" />
       <workItem from="1724469382855" duration="5431000" />
+      <workItem from="1724552133730" duration="444000" />
     </task>
     <servers />
   </component>
