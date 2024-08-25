@@ -27,9 +27,9 @@ print(torch.cuda.get_device_properties(device))
 
 #%% Data Loading
 
-# pickle_file_path = r"E:\OneDrive\OneDrive - Clemson University\Important\Thesis\Codes\hack2024\image_array_dict_970368.pkl"
-# pickle_file_path = r"E:\OneDrive\OneDrive - Clemson University\Important\Thesis\Codes\hack2024\image_array_dict_970618_small.pkl"
-pickle_file_path = r"E:\OneDrive\OneDrive - Clemson University\Important\Thesis\Codes\hack2024\image_array_dict_971419_60x60.pkl"
+# pickle_file_path = r"E:\OneDrive\OneDrive - Clemson University\Important\Thesis\Codes\hack24\image_array_dict_970368.pkl"
+# pickle_file_path = r"E:\OneDrive\OneDrive - Clemson University\Important\Thesis\Codes\hack24\image_array_dict_970618_small.pkl"
+pickle_file_path = r"E:\OneDrive\OneDrive - Clemson University\Important\Thesis\Codes\hack24\image_array_dict_971419_60x60.pkl"
 
 time_start = time.time()
 
@@ -144,4 +144,3 @@ class TripletCosineLoss(nn.Module):
 if __name__ == '__main__':
     model = SiameseTripletNetwork(dropout_rate=0)
     criterion = TripletCosineLoss(margin=0.3)
-

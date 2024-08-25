@@ -30,42 +30,56 @@ print(torch.cuda.get_device_properties(device))
 
 #%% Data Loading
 
-# pickle_file_path = r"E:\OneDrive\OneDrive - Clemson University\Important\Thesis\Codes\hack24\image_array_dict_970368.pkl"
-# pickle_file_path = r"E:\OneDrive\OneDrive - Clemson University\Important\Thesis\Codes\hack24\image_array_dict_970618_small.pkl"
-pickle_file_path = r"E:\OneDrive\OneDrive - Clemson University\Important\Thesis\Codes\hack24\image_array_dict_971419_60x60.pkl"
-
 nist_part1 = r"E:\OneDrive\OneDrive - Clemson University\Important\Thesis\Codes\hack2024\nist_eval_part1.pkl"
 nist_part2 = r"E:\OneDrive\OneDrive - Clemson University\Important\Thesis\Codes\hack2024\nist_eval_part2.pkl"
 
 time_start = time.time()
 
-with open(pickle_file_path, 'rb') as f:
+with open(nist_part1, 'rb') as f:
     data_dict = pickle.load(f)
 
 print(f"Data read in {time.time() - time_start} seconds.")
 
-#%% Train, eval and test data
+#%%
 
-# data_train = {k:v for k, v in data_dict.items() if int(k.split('_')[0][1:]) <= 150}
-data_eval = {k:v for k, v in data_dict.items() if 150 < int(k.split('_')[0][1:]) <200 }
-data_test = {k:v for k, v in data_dict.items() if int(k.split('_')[0][1:]) > 200}
+class ImageDatasetNIST(Dataset):
+    def __init__(self, data_dict):
+        self.data_dict = data_dict
+        self.data = dict(sorted(data_dict.items()))
+        self.triplets = self._create_triplets()
+
+    def _create_triplets(self):
+        triplets = []
+        filenames = list(self.data_dict.keys())
+
+        for i in range(1, len(filenames)-2):
+            fname_prv, fname_cur, fname_nxt = filenames[i], filenames[i+1], filenames[i+2]
+
+            if fname_prv +1 == fname_cur == fname_nxt -1:
+
+                data_prv = torch.from_numpy(self.data[fname_prv] / 255).float().unsqueeze(0)
+                data_cur = torch.from_numpy(self.data[fname_cur] / 255).float().unsqueeze(0)
+                data_nxt = torch.from_numpy(self.data[fname_nxt] / 255).float().unsqueeze(0)
+
+                triplets.append((
+                    fname_prv, fname_cur, fname_nxt, data_prv, data_cur, data_nxt
+                ))
+        return triplets
 
 
-#%% Train, eval and test datasets and dataloaders
 
-time_start = time.time()
+    def __len__(self):
+        return len(self.triplets)
 
-# dataset_train = ImageDataset(data_train,num_data=20000)
-dataset_eval = ImageDataset(data_eval, num_data=50000)
-dataset_test = ImageDataset(data_test, num_data=50000)
+    def __getitem__(self, idx):
+        return self.triplets[idx]
 
-batch_size = 512
 
-# dataloader_train = DataLoader(dataset_train, batch_size=batch_size, shuffle=True)
-dataloader_eval = DataLoader(dataset_eval, batch_size=batch_size, shuffle=True)
-dataloader_test = DataLoader(dataset_test, batch_size=batch_size, shuffle=True)
+#%%
 
-print(f'Data loaded in {time.time() - time_start} sec')
+dataset_test = ImageDatasetNIST(data_dict)
+batch_size = 1
+dataloader_test = DataLoader(dataset_test, batch_size=batch_size, shuffle=False)
 
 #%% Model Loading
 
@@ -107,15 +121,16 @@ with torch.no_grad():
         loss_val_batch += loss.item()
 
         sim_pos_neg[fname_anchor] = (sim_pos, sim_neg)
-        embeddings_all[fname_anchor] = (embed_anchor, embed_pos, embed_neg)
+        embeddings_all[fname_anchor] = embed_anchor
 
     ### Calculate average validation loss and accuracy
-    loss_val_avg = loss_val_batch / len(dataloader_eval)
+    loss_val_avg = loss_val_batch / len(dataloader_test)
 
 print("Loss val Avg: ", loss_val_avg)
 
 sim_pos_neg = dict(sorted(sim_pos_neg.items()))
 embeddings_all = dict(sorted(embeddings_all.items()))
+
 
 #%%
 sim_pos_all = [v[0] for v in sim_pos_neg.values()]
@@ -200,22 +215,9 @@ plot_roc_curve(sim_pos_all, sim_neg_all)
 
 #%% Embeddings all
 
-embedd_anc = [v[0] for v in embeddings_all.values()]
+embedd_anc = [v[0].unsqueeze(0) for v in embeddings_all.values()]
 embedd_anc = torch.cat(embedd_anc, dim=0).cpu().numpy()
-
-embedd_pos = [v[1] for v in embeddings_all.values()]
-embedd_pos = torch.cat(embedd_pos, dim=0).cpu().numpy()
-
-embedd_neg = [v[2] for v in embeddings_all.values()]
-embedd_neg = torch.cat(embedd_neg, dim=0).cpu().numpy()
-
-embed_all = np.vstack((embedd_anc, embedd_pos, embedd_neg))
-
-#%%
-num_samples = 5000
-rand_sample_ids = np.random.choice(len(embed_all), size=num_samples)
-embed_sample = embed_all[rand_sample_ids, :]
-
+#
 #%% TSNE CPU - SkLearn
 
 rand_state = 5
@@ -242,7 +244,7 @@ embed_tsne = TSNE(
     random_state=rand_state,
 )
 
-embed_tsne.fit_transform(embed_sample)
+embed_tsne.fit_transform(embedd_anc)
 print(f"KL Divergence: {embed_tsne.kl_divergence_}")
 print(f"n_features_in: {embed_tsne.n_features_in_}")
 print(f"Learning rate: {embed_tsne.learning_rate_}")
@@ -270,31 +272,3 @@ plt.scatter(tsne_embed[:, 0], tsne_embed[:,1],
 plt.savefig('pretrained_t_sne_plt.png')
 plt.show()
 # plt.close()
-
-#%%
-from captum.attr import IntegratedGradients
-
-
-# Example input tensors (e.g., a batch of anchor images)
-anchor_input = torch.randn(1, 1, 60, 60)  # Single-channel 60x60 image
-anchor_input.requires_grad = True  # Required for gradient calculation
-
-# Use Captum to compute Integrated Gradients
-ig = IntegratedGradients(model.forward_once)
-
-# Compute attributions for the anchor input
-attributions, delta = ig.attribute(anchor_input, target=0, return_convergence_delta=True)
-
-# Convert attributions to numpy for visualization
-attributions = attributions.detach().numpy().squeeze()
-
-# Visualize the attributions
-plt.figure(figsize=(8, 6))
-plt.imshow(attributions, cmap='hot', interpolation='nearest')
-plt.colorbar()
-plt.title('Integrated Gradients Attributions for Anchor Input')
-plt.show()
-
-print(f"Convergence Delta: {delta.item()}")
-
-#%%

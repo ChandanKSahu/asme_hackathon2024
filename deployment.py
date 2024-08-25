@@ -55,6 +55,9 @@ folder_path_p1_miss = r'E:\Hackathon2024Data\NIST\NIST_Problem_full_dataset\open
 images_p1 = load_images_to_dict(folder_path_p1)
 images_p1_miss = load_images_to_dict(folder_path_p1_miss)
 
+# with open("nist_eval_part1.pkl", 'wb') as file:
+#     pickle.dump(images_p1, file)
+
 #%% Dataset
 
 class ImageDataset(Dataset):
@@ -236,3 +239,6 @@ threshold = -0.501
 # threshold = -0.555
 
 sim_filtered_p2 = sim_df_p2[sim_df_p2[0]<threshold]
+
+#%%
+
